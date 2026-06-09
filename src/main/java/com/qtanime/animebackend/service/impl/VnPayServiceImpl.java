@@ -1,9 +1,6 @@
 package com.qtanime.animebackend.service.impl;
 
-import java.util.UUID;
-
-import org.springframework.stereotype.Service;
-
+import com.qtanime.animebackend.config.VnPayConfig;
 import com.qtanime.animebackend.dto.payment.VnPayRequest;
 import com.qtanime.animebackend.entity.Order;
 import com.qtanime.animebackend.entity.Payment;
@@ -13,8 +10,13 @@ import com.qtanime.animebackend.exception.ResourceNotFoundException;
 import com.qtanime.animebackend.repository.OrderRepository;
 import com.qtanime.animebackend.repository.PaymentRepository;
 import com.qtanime.animebackend.service.VnPayService;
-
+import com.qtanime.animebackend.utils.VnPayUtils;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+
+import java.util.HashMap;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -24,21 +26,24 @@ public class VnPayServiceImpl implements VnPayService {
 
     private final PaymentRepository paymentRepository;
 
+    private final VnPayConfig vnPayConfig;
+
     // =========================
-    // CREATE PAYMENT URL
+    // TẠO URL THANH TOÁN VNPAY
     // =========================
 
     @Override
-    public String createPaymentUrl(VnPayRequest request) {
+    public String createPaymentUrl(VnPayRequest request, HttpServletRequest httpRequest) {
 
         Order order = orderRepository.findById(request.getOrderId())
                 .orElseThrow(() ->
-                        new ResourceNotFoundException(
-                                "Đơn hàng không tồn tại"
-                        ));
+                        new ResourceNotFoundException("Đơn hàng không tồn tại")
+                );
 
-        String txnRef = UUID.randomUUID().toString();
+        // Tạo mã giao dịch duy nhất
+        String txnRef = VnPayUtils.generateTxnRef();
 
+        // Lưu bản ghi thanh toán vào DB với trạng thái UNPAID
         Payment payment = Payment.builder()
                 .order(order)
                 .paymentMethod(PaymentMethod.VNPAY)
@@ -49,44 +54,95 @@ public class VnPayServiceImpl implements VnPayService {
 
         paymentRepository.save(payment);
 
-        return "https://sandbox.vnpayment.vn/paymentv2/vpcpay.html"
-                + "?vnp_TxnRef=" + txnRef
-                + "&vnp_Amount=" + request.getAmount();
+        // =========================
+        // BUILD PARAMS GỬI LÊN VNPAY
+        // Lưu ý: vnp_Amount = số tiền * 100 (VNPay dùng đơn vị VND*100)
+        // =========================
+
+        Map<String, String> vnpParams = new HashMap<>();
+        vnpParams.put("vnp_Version",    "2.1.0");
+        vnpParams.put("vnp_Command",    "pay");
+        vnpParams.put("vnp_TmnCode",    vnPayConfig.getTmnCode());
+        vnpParams.put("vnp_Amount",     String.valueOf((long)(request.getAmount() * 100)));
+        vnpParams.put("vnp_CurrCode",   "VND");
+        vnpParams.put("vnp_TxnRef",     txnRef);
+        vnpParams.put("vnp_OrderInfo",  "Thanh toan don hang #" + request.getOrderId());
+        vnpParams.put("vnp_OrderType",  "other");
+        vnpParams.put("vnp_Locale",     "vn");
+        vnpParams.put("vnp_ReturnUrl",  vnPayConfig.getReturnUrl());
+        vnpParams.put("vnp_IpAddr",     getClientIp(httpRequest));
+        vnpParams.put("vnp_CreateDate", VnPayUtils.getCurrentTime());
+
+        // Build query string (đã sort theo key - bắt buộc để ký đúng)
+        String queryString = VnPayUtils.buildQueryString(vnpParams);
+
+        // Tạo chữ ký HMAC-SHA512
+        String secureHash = VnPayUtils.hmacSHA512(vnPayConfig.getHashSecret(), queryString);
+
+        // URL cuối cùng gửi về client
+        return vnPayConfig.getPayUrl() + "?" + queryString + "&vnp_SecureHash=" + secureHash;
     }
 
     // =========================
-    // PAYMENT CALLBACK
+    // XỬ LÝ CALLBACK TỪ VNPAY
     // =========================
 
     @Override
-    public void paymentCallback(
-            String vnpResponseCode,
-            String vnpTransactionNo,
-            String vnpTxnRef
-    ) {
+    public boolean paymentCallback(Map<String, String> params) {
 
-        Payment payment = paymentRepository
-                .findByTransactionCode(vnpTxnRef)
+        // Lấy chữ ký VNPay gửi về
+        String receivedHash = params.remove("vnp_SecureHash");
+        params.remove("vnp_SecureHashType");
+
+        // Tính lại chữ ký từ params còn lại (đã sort)
+        String queryString    = VnPayUtils.buildQueryString(params);
+        String calculatedHash = VnPayUtils.hmacSHA512(vnPayConfig.getHashSecret(), queryString);
+
+        // Kiểm tra tính toàn vẹn của dữ liệu
+        if (!calculatedHash.equalsIgnoreCase(receivedHash)) {
+            throw new RuntimeException("Chữ ký VNPay không hợp lệ - có thể bị giả mạo!");
+        }
+
+        String txnRef      = params.get("vnp_TxnRef");
+        String responseCode = params.get("vnp_ResponseCode");
+
+        Payment payment = paymentRepository.findByTransactionCode(txnRef)
                 .orElseThrow(() ->
-                        new ResourceNotFoundException(
-                                "Không tìm thấy giao dịch"
-                        ));
+                        new ResourceNotFoundException("Không tìm thấy giao dịch: " + txnRef)
+                );
 
-        if ("00".equals(vnpResponseCode)) {
-
+        if ("00".equals(responseCode)) {
+            // Thanh toán thành công
             payment.setPaymentStatus(PaymentStatus.PAID);
 
             Order order = payment.getOrder();
-
             order.setPaymentStatus(PaymentStatus.PAID);
-
             orderRepository.save(order);
-
         } else {
-
+            // Thanh toán thất bại hoặc bị huỷ
             payment.setPaymentStatus(PaymentStatus.FAILED);
         }
 
         paymentRepository.save(payment);
+        return "00".equals(responseCode);
+    }
+
+    // =========================
+    // LẤY IP CLIENT
+    // =========================
+
+    private String getClientIp(HttpServletRequest request) {
+        String ip = request.getHeader("X-Forwarded-For");
+        if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
+            ip = request.getHeader("Proxy-Client-IP");
+        }
+        if (ip == null || ip.isEmpty() || "unknown".equalsIgnoreCase(ip)) {
+            ip = request.getRemoteAddr();
+        }
+        // Nếu có nhiều IP (proxy chain), lấy IP đầu tiên
+        if (ip != null && ip.contains(",")) {
+            ip = ip.split(",")[0].trim();
+        }
+        return ip;
     }
 }

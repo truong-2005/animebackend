@@ -57,6 +57,12 @@ public class User extends BaseEntity {
 
     private Boolean enabled;
 
+    // OAuth2 provider: LOCAL, GOOGLE, FACEBOOK
+    private String provider;
+
+    // ID từ provider (sub của Google, id của Facebook)
+    private String providerId;
+
     @ManyToOne
     @JoinColumn(name = "role_id")
     private Role role;
