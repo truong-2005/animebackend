@@ -1,5 +1,7 @@
 package com.qtanime.animebackend.dto.product;
 
+import java.util.List;
+
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -32,4 +34,30 @@ public class ProductResponse {
     private String brandName;
 
     private String status;
+
+    private List<ProductImageDto> images;
+
+    private List<ProductAttributeDto> attributes;
+
+    @Getter
+    @Setter
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    public static class ProductAttributeDto {
+        private Long id;
+        private String name;
+        private String value;
+    }
+
+    @Getter
+    @Setter
+    @NoArgsConstructor
+    @AllArgsConstructor
+    @Builder
+    public static class ProductImageDto {
+        private Long id;
+        private String imageUrl;
+        private Boolean isPrimary;
+    }
 }

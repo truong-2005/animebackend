@@ -138,6 +138,8 @@ public class SecurityConfig {
                         .requestMatchers(
                                 HttpMethod.GET,
 
+                                "/uploads/**",
+
                                 "/api/products/**",
 
                                 "/api/categories/**",

@@ -28,7 +28,11 @@ public class MailServiceImpl implements MailService {
                         + token
         );
 
-        mailSender.send(message);
+        try {
+            mailSender.send(message);
+        } catch (Exception e) {
+            System.err.println("Lỗi gửi email: " + e.getMessage());
+        }
     }
 
     @Override
@@ -45,7 +49,11 @@ public class MailServiceImpl implements MailService {
                         + token
         );
 
-        mailSender.send(message);
+        try {
+            mailSender.send(message);
+        } catch (Exception e) {
+            System.err.println("Lỗi gửi email: " + e.getMessage());
+        }
     }
 
     @Override
@@ -62,6 +70,10 @@ public class MailServiceImpl implements MailService {
                         + orderCode
         );
 
-        mailSender.send(message);
+        try {
+            mailSender.send(message);
+        } catch (Exception e) {
+            System.err.println("Lỗi gửi email: " + e.getMessage());
+        }
     }
 }

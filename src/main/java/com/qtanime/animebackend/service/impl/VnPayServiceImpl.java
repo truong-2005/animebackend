@@ -66,12 +66,20 @@ public class VnPayServiceImpl implements VnPayService {
         vnpParams.put("vnp_Amount",     String.valueOf((long)(request.getAmount() * 100)));
         vnpParams.put("vnp_CurrCode",   "VND");
         vnpParams.put("vnp_TxnRef",     txnRef);
-        vnpParams.put("vnp_OrderInfo",  "Thanh toan don hang #" + request.getOrderId());
+        vnpParams.put("vnp_OrderInfo",  "Thanh toan don hang " + request.getOrderId());
         vnpParams.put("vnp_OrderType",  "other");
         vnpParams.put("vnp_Locale",     "vn");
         vnpParams.put("vnp_ReturnUrl",  vnPayConfig.getReturnUrl());
         vnpParams.put("vnp_IpAddr",     getClientIp(httpRequest));
-        vnpParams.put("vnp_CreateDate", VnPayUtils.getCurrentTime());
+        
+        String createDate = VnPayUtils.getCurrentTime();
+        vnpParams.put("vnp_CreateDate", createDate);
+        
+        // Add expire date (15 minutes from now) to fix VNPay sandbox "timer is not defined" error
+        java.time.LocalDateTime now = java.time.LocalDateTime.now();
+        java.time.LocalDateTime expire = now.plusMinutes(15);
+        String expireDate = expire.format(java.time.format.DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
+        vnpParams.put("vnp_ExpireDate", expireDate);
 
         // Build query string (đã sort theo key - bắt buộc để ký đúng)
         String queryString = VnPayUtils.buildQueryString(vnpParams);

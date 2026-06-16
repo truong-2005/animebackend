@@ -495,7 +495,7 @@ String thumbnail =
 
             File destination =
                     new File(
-                            folder,
+                            folder.getAbsolutePath(),
                             fileName
                     );
 
@@ -520,6 +520,40 @@ String thumbnail =
     private ProductResponse mapToResponse(
             Product product
     ) {
+        java.util.List<ProductResponse.ProductImageDto> imageDtos = new java.util.ArrayList<>();
+        
+        if (product.getThumbnail() != null) {
+            imageDtos.add(ProductResponse.ProductImageDto.builder()
+                    .id(-1L)
+                    .imageUrl(product.getThumbnail())
+                    .isPrimary(true)
+                    .build());
+        }
+        
+        if (product.getImages() != null && !product.getImages().isEmpty()) {
+            product.getImages().forEach(img -> {
+                imageDtos.add(ProductResponse.ProductImageDto.builder()
+                        .id(img.getId())
+                        .imageUrl(img.getImage())
+                        .isPrimary(false)
+                        .build());
+            });
+        }
+        
+        java.util.List<ProductResponse.ProductAttributeDto> attributeDtos = new java.util.ArrayList<>();
+        if (product.getAttributes() != null && !product.getAttributes().isEmpty()) {
+            product.getAttributes().forEach(attr -> {
+                String valStr = "";
+                if (attr.getValues() != null && !attr.getValues().isEmpty()) {
+                    valStr = attr.getValues().stream().map(v -> v.getValue()).reduce((a, b) -> a + ", " + b).orElse("");
+                }
+                attributeDtos.add(ProductResponse.ProductAttributeDto.builder()
+                        .id(attr.getId())
+                        .name(attr.getName())
+                        .value(valStr)
+                        .build());
+            });
+        }
 
         return ProductResponse.builder()
                 .id(product.getId())
@@ -544,6 +578,8 @@ String thumbnail =
                 .status(
                         product.getStatus().name()
                 )
+                .images(imageDtos)
+                .attributes(attributeDtos)
                 .build();
     }
 }

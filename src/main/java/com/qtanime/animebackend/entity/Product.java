@@ -62,4 +62,11 @@ public class Product extends BaseEntity {
             orphanRemoval = true
     )
     private List<ProductImage> images;
+
+    @OneToMany(
+            mappedBy = "product",
+            cascade = CascadeType.ALL,
+            orphanRemoval = true
+    )
+    private List<ProductAttribute> attributes;
 }

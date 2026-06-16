@@ -21,6 +21,7 @@ import com.qtanime.animebackend.exception.ResourceNotFoundException;
 import com.qtanime.animebackend.repository.RoleRepository;
 import com.qtanime.animebackend.repository.UserRepository;
 import com.qtanime.animebackend.service.UserService;
+import org.springframework.dao.DataIntegrityViolationException;
 
 import lombok.RequiredArgsConstructor;
 
@@ -162,7 +163,11 @@ public class UserServiceImpl implements UserService {
                         )
                 );
 
-        userRepository.delete(user);
+        try {
+            userRepository.delete(user);
+        } catch (DataIntegrityViolationException e) {
+            throw new BadRequestException("Không thể xóa thành viên này vì đã có dữ liệu liên quan (Đơn hàng, Bình luận, ...)");
+        }
     }
 
     // =========================
@@ -292,10 +297,7 @@ public class UserServiceImpl implements UserService {
                             file.getOriginalFilename();
 
             File destination =
-                    new File(
-                            folder,
-                            fileName
-                    );
+                    new File(folder.getAbsolutePath(), fileName);
 
             file.transferTo(destination);
 

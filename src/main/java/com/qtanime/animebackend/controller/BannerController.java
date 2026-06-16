@@ -47,16 +47,16 @@ public class BannerController {
             @ModelAttribute Banner banner,
 
             @RequestPart(
-                    value = "image",
+                    value = "file",
                     required = false
             )
-            MultipartFile image
+            MultipartFile file
 
     ) {
 
         return bannerService.create(
                 banner,
-                image
+                file
         );
     }
 
@@ -71,17 +71,17 @@ public class BannerController {
             @ModelAttribute Banner banner,
 
             @RequestPart(
-                    value = "image",
+                    value = "file",
                     required = false
             )
-            MultipartFile image
+            MultipartFile file
 
     ) {
 
         return bannerService.update(
                 id,
                 banner,
-                image
+                file
         );
     }
 

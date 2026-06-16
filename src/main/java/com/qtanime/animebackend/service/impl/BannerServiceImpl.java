@@ -133,10 +133,7 @@ public class BannerServiceImpl
                             file.getOriginalFilename();
 
             File destination =
-                    new File(
-                            folder,
-                            fileName
-                    );
+                    new File(folder.getAbsolutePath(), fileName);
 
             file.transferTo(destination);
 
