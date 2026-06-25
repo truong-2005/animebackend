@@ -2,6 +2,7 @@ package com.qtanime.animebackend.service.impl;
 
 import java.io.File;
 import java.io.IOException;
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 import org.springframework.data.domain.Page;
@@ -555,6 +556,16 @@ String thumbnail =
             });
         }
 
+        Double salePrice = null;
+        if (product.getProductSale() != null) {
+            ProductSale sale = product.getProductSale();
+            LocalDateTime now = LocalDateTime.now();
+            if ((sale.getStartDate() == null || !now.isBefore(sale.getStartDate())) &&
+                (sale.getEndDate() == null || !now.isAfter(sale.getEndDate()))) {
+                salePrice = sale.getSalePrice();
+            }
+        }
+
         return ProductResponse.builder()
                 .id(product.getId())
                 .name(product.getName())
@@ -563,6 +574,7 @@ String thumbnail =
                         product.getDescription()
                 )
                 .price(product.getPrice())
+                .salePrice(salePrice)
                 .quantity(
                         product.getQuantity()
                 )

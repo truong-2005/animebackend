@@ -25,6 +25,8 @@ public class ProductResponse {
 
     private Double price;
 
+    private Double salePrice;
+
     private Integer quantity;
 
     private String thumbnail;
