@@ -1,6 +1,7 @@
 package com.qtanime.animebackend.entity;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 import com.qtanime.animebackend.enums.Gender;
@@ -40,6 +41,8 @@ public class User extends BaseEntity {
 
     private String fullName;
 
+    private String address;
+
     // FILE IMAGE
     private String avatar;
 
@@ -55,6 +58,10 @@ public class User extends BaseEntity {
 
     // ID từ provider (sub của Google, id của Facebook)
     private String providerId;
+
+    private String resetPasswordToken;
+
+    private LocalDateTime resetPasswordTokenExpiry;
 
     @ManyToOne
     @JoinColumn(name = "role_id")
