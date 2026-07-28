@@ -464,22 +464,22 @@ String thumbnail =
                                         "Sản phẩm không tồn tại"
                                 ));
 
-        ProductSale sale =
-                ProductSale.builder()
-                        .product(product)
-                        .salePrice(
-                                request.getSalePrice()
-                        )
-                        .salePercent(
-                                request.getSalePercent()
-                        )
-                        .startDate(
-                                request.getStartDate()
-                        )
-                        .endDate(
-                                request.getEndDate()
-                        )
-                        .build();
+        ProductSale sale = productSaleRepository.findByProductId(productId).orElse(null);
+        
+        if (sale == null) {
+            sale = ProductSale.builder()
+                    .product(product)
+                    .salePrice(request.getSalePrice())
+                    .salePercent(request.getSalePercent())
+                    .startDate(request.getStartDate())
+                    .endDate(request.getEndDate())
+                    .build();
+        } else {
+            sale.setSalePrice(request.getSalePrice());
+            sale.setSalePercent(request.getSalePercent());
+            sale.setStartDate(request.getStartDate());
+            sale.setEndDate(request.getEndDate());
+        }
 
         productSaleRepository.save(sale);
     }
