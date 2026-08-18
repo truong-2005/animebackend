@@ -19,7 +19,8 @@ public class CorsConfig {
         config.setAllowedOrigins(List.of(
                 "http://localhost:3000",
                 "http://localhost:5173",
-                "https://animefe.vercel.app"
+                "https://animefe.vercel.app",
+                "https://animefe-76tik3amd-truong-2005s-projects.vercel.app"
         ));
 
         config.setAllowedHeaders(List.of("*"));
